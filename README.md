@@ -21,6 +21,7 @@
 ## Как работает
 > [!IMPORTANT]
 > Для запуска необходимо будет в BotFather в telegram сделать свой токен для создания бота, так же загрузить свой документ для вашей базы знаний
+
 > сначала надо будет запустить файл demo1, затем worker_serviceprocessor1 (если вы запускаете Apache Kafka через docker, то сначала надо будет запустить его)
 
 ![image](https://github.com/user-attachments/assets/66dd149a-ad62-474d-ac73-d13703a414fd)
