@@ -26,6 +26,8 @@ AI-бот реализовани на CPU 12гб RAM, поэтому если е
 ## Результат работы
 
 ![image](https://github.com/user-attachments/assets/52636fe8-5025-4836-9fa7-3cb09c71f48f)
+![image](https://github.com/user-attachments/assets/152ce157-385c-4297-922f-b5268c1be29c)
+
 
 
 
