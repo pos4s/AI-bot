@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.8
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOO_MAX_CLIENT_CNXNS=1000  # Увеличиваем лимит подключений
+    volumes:
+      - zookeeper_data:/bitnami
+    healthcheck:
+      test: ["CMD", "zkServer.sh", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  kafka:
+    image: bitnami/kafka:3.6
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_NUM_NETWORK_THREADS=16  # Увеличиваем потоки
+      - KAFKA_CFG_NUM_IO_THREADS=16
+      - KAFKA_CFG_SOCKET_SEND_BUFFER_BYTES=1024000
+      - KAFKA_CFG_SOCKET_RECEIVE_BUFFER_BYTES=1024000
+      - KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES=104857600
+      - KAFKA_CFG_GROUP_MAX_SESSION_TIMEOUT_MS=600000
+      - KAFKA_CFG_GROUP_MIN_SESSION_TIMEOUT_MS=30000
+    volumes:
+      - kafka_data:/bitnami
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  assistant:
+    build: .
+    container_name: assistant
+    ports:
+      - "8000:8000"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092  # Используем внутренний адрес
+      - KAFKA_POLL_TIMEOUT_MS=500
+      - OLLAMA_NUM_THREADS=4
+    volumes:
+      - ./vector_store:/app/vector_store
+      - ./data:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  kafka_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+
+networks:
+  default:
+    name: kafka_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
